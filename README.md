@@ -4,6 +4,19 @@ This repository contains a small Lean 4 formalization of a finite obstruction le
 
 It **does not prove Erdős #319**. It proves a Lean-checked finite top-layer exclusion lemma that can be used as partial progress toward upper bounds for the maximum size of a primitive signed reciprocal zero-sum support.
 
+## Proof note and status
+
+A human-readable proof note is available here:
+
+- [A large-prime obstruction for Erdős Problem #319](docs/erdos319_large_prime_obstruction.md)
+
+Status of the claims in that note:
+
+- **Lean-verified:** the finite top-layer exclusion lemma in [`RequestProject/Main.lean`](RequestProject/Main.lean), theorem `Erdos319.erdos319_top_layer_exclusion`.
+- **Human proof:** the asymptotic corollaries in the proof note, using the Lean-verified finite lemma plus standard analytic number theory.
+- **Not yet Lean-formalized:** the second-order near-full-layer refinement.
+- **Not claimed:** a solution to Erdős Problem #319.
+
 ## Main theorem
 
 The main theorem is in [`RequestProject/Main.lean`](RequestProject/Main.lean):
