@@ -4,7 +4,7 @@
 
 - **Lean-verified:** the finite top-layer exclusion lemma in [`RequestProject/Main.lean`](../RequestProject/Main.lean), theorem `Erdos319.erdos319_top_layer_exclusion`.
 - **Human proof:** the asymptotic corollaries in this note, using the Lean-verified finite lemma plus standard analytic number theory.
-- **Not yet Lean-formalized:** the second-order near-full-layer refinement in Section 7.
+- **Optional / not yet Lean-formalized:** the second-order near-full-layer deterministic union-bound refinement in Section 7. The main advertised result uses only Sections 2--6.
 - **Not claimed:** a solution to Erdős Problem #319.
 
 **Rendering note.** This Markdown file intentionally uses plain-text formula blocks instead of GitHub-rendered LaTeX. This avoids GitHub/KaTeX parser errors such as “Extra open brace or missing close brace”. The mathematical content is the same proof note, but optimized for stable viewing on GitHub.
@@ -32,6 +32,8 @@ and for every non-empty proper subset `B ⊊ A`,
 ```text
 sum_{n in B} δ(n)/n != 0.
 ```
+
+Here the signs on `B` are the inherited signs from the original `δ`. This is the same-`δ` support-minimality condition formalized in Lean as `DeltaPrimitive`.
 
 The first-order conclusion is
 
@@ -66,10 +68,15 @@ Let `p` be prime, let `A ⊆ [1,N]` be admissible with sign function `δ`, and p
 t = floor(N/p).
 ```
 
-Assume
+Assume the two separate hypotheses
 
 ```text
-t < |A|
+t < |A|,
+```
+
+and
+
+```text
 L_t * H_t < p.
 ```
 
@@ -87,6 +94,19 @@ theorem Erdos319.erdos319_top_layer_exclusion
 
 in [`RequestProject/Main.lean`](../RequestProject/Main.lean).
 
+### Lean audit note for Lemma 1
+
+The potentially delicate `p`-adic layer isolation is not treated as a black box. In Lean it is split into separate lemmas, including:
+
+1. `signedZero_T_eq_topW`, identifying the `p`-divisible layer sum with the cleared numerator `topW/(p*L_t)`;
+2. `p_dvd_topW`, proving `p ∣ topW` after clearing the complementary `p`-coprime denominators;
+3. `topW_abs_le`, bounding `|topW|` by `L_t H_t`;
+4. `signedZero_filter_p`, concluding that the `p`-divisible layer is itself a same-`δ` signed-zero subset.
+
+Thus the proof does not rely on an informal assertion that “lower layers vanish”; the top-layer extraction, divisibility, smallness, and primitive-support step are separated.
+
+Prime powers require no separate treatment: the layer is defined by divisibility by `p`, not by exact valuation one.
+
 ### Proof of Lemma 1
 
 Let
@@ -103,7 +123,9 @@ Define the cleared top-layer integer
 W_p(A,δ) = sum_{1 <= m <= t, pm in A} δ(pm) * L_t/m.
 ```
 
-This is an integer because `m` divides `L_t` for every `1 <= m <= t`. The signed reciprocal sum over the top layer is
+This is an integer because `m` divides `L_t` for every `1 <= m <= t`. The coefficients remain exactly the inherited signs `δ(pm)`; clearing denominators introduces the weights `L_t/m`, but after dividing by `L_t` this is exactly the original same-`δ` layer sum. No new signed representation with altered coefficients is being used.
+
+The signed reciprocal sum over the top layer is
 
 ```text
 sum_{n in T} δ(n)/n
@@ -176,7 +198,7 @@ sum_{n in T} δ(n)/n = 0.
 
 So `T` is a same-`δ` zero-sum subset of `A`.
 
-If `T = ∅`, we are done. Suppose `T != ∅`. Since `A` is primitive, no non-empty proper subset of `A` can be a same-`δ` zero-sum. Hence `T = A`.
+The primitive-support step is the following dichotomy. If `T = ∅`, we are done. If `T != ∅`, then `T` is a non-empty same-`δ` signed-zero subset of `A`. Since `A` is primitive, `T` cannot be a non-empty proper subset of `A`; hence `T = A`.
 
 But if `T = A`, then every element of `A` is a multiple of `p`, and all such multiples inside `[1,N]` are
 
@@ -278,6 +300,8 @@ since `k_0^2 = o(N)`. Therefore the excluded integers are counted without overla
 ```text
 sum_{N/k_0 < p <= N} floor(N/p).
 ```
+
+Prime powers do not create an overlap problem: the exclusion is attached to the unique large prime divisor `p`, and every multiple `pm <= N` is counted once through that prime.
 
 We use the following standard estimate.
 
@@ -436,27 +460,66 @@ To remove the `log c` loss, choose a cutoff
 K_N = (1 - η_N) log N,
 ```
 
-where `η_N -> 0`, `η_N log N / log log N -> infinity`, and `η_N` also dominates the uniform `o(1)` error in `ψ(t)=t+o(t)` for `t <= log N`.
+where `η_N -> 0` and
 
-Then the estimate
+```text
+η_N log N / log log N -> infinity.
+```
+
+We also choose `η_N` slowly enough to dominate the relevant uniform error in `ψ(t)=t+o(t)` up to `t <= log N`. To make this quantifier explicit, choose a function `ρ(X) -> 0` such that, for all sufficiently large `X`,
+
+```text
+|ψ(x)-x| <= ρ(X) x       for all x >= X.
+```
+
+Let `X_N -> infinity` with `X_N = o(log N)`, for instance
+
+```text
+X_N = sqrt(log N).
+```
+
+For `t <= X_N`, we have
+
+```text
+ψ(t) + O(log log t) = o(log N),
+```
+
+so `L_t H_t < p` is immediate for every `p > N/K_N`.
+
+For `X_N < t <= K_N`, we have
+
+```text
+ψ(t) <= (1+ρ(X_N)) t.
+```
+
+Choose `η_N` so slowly that
+
+```text
+η_N log N >> ρ(X_N) log N + log log N.
+```
+
+Then for every `t <= (1-η_N)log N`,
+
+```text
+ψ(t) + O(log log t)
+  <= log N - η_N log N + o(η_N log N)
+  < log N - log log N + O(1).
+```
+
+On the other hand, if `p > N/K_N`, then
+
+```text
+log p >= log N - log K_N
+       = log N - log log N + o(1).
+```
+
+Thus
 
 ```text
 L_t H_t < p
 ```
 
-holds uniformly for all `t <= K_N` and all `p > N/K_N`. Indeed,
-
-```text
-log(L_t H_t) = ψ(t) + O(log log t) = t + o(t) + O(log log t),
-```
-
-while
-
-```text
-log p >= log N - log K_N = log N - log log N + o(1).
-```
-
-The choice of `η_N` absorbs the `o(t)` and `O(log log t)` terms.
+holds uniformly for all `t <= K_N` and all `p > N/K_N`.
 
 Lemma 1 therefore excludes all multiples of primes `p > N/K_N`, and Lemma 2 gives
 
@@ -480,9 +543,9 @@ This is the cleanest human-verifiable asymptotic corollary of the Lean-checked f
 
 ---
 
-## 7. Optional second-order near-full-layer refinement
+## 7. Optional deterministic union-bound refinement for near-full layers
 
-This section is **not Lean-formalized**. It records a further human asymptotic refinement suggested by a first-moment count of near-full `p`-adic layers.
+This section is **not Lean-formalized** and should not be used to support the main advertised theorem. The main theorem of this note is contained in Sections 2--6. This section records a further human deterministic union-bound refinement suggested by counting possible cleared numerators of near-full `p`-adic layers.
 
 Let `1 < β < 1/log 2` and `0 < δ < 1/2` satisfy
 
@@ -509,7 +572,7 @@ K_N < floor(N/p) <= B_N,
 B_N = floor(β log N - 2β log log N).
 ```
 
-For such primes, a first-moment argument shows that, for all but a negligible weighted set of primes, a `(1-δ)`-full `p`-layer is impossible inside a primitive support. Thus at least a `δ` proportion of each such layer must be missing.
+For such primes, a deterministic union-bound argument shows that, for all but a negligible weighted set of primes, a `(1-δ)`-full `p`-layer is impossible inside a primitive support. Thus at least a `δ` proportion of each such layer must be missing.
 
 The relevant counting input is the following.
 
@@ -562,6 +625,8 @@ For each such `S`, there are at most `2^t` sign choices. Hence the number of pos
 exp((log 2 + H(δ) + o(1))t) = exp((a+o(1))t).
 ```
 
+This is only a union bound over possible cleared numerators; no probabilistic independence between layers or primes is being assumed.
+
 For fixed `t`, a fixed nonzero `W_{t,S,ε}` has at most one prime divisor in `I_t(N)` for large `N`: indeed,
 
 ```text
@@ -584,11 +649,25 @@ sum_{t <= (β+o(1))log N} t exp((a+o(1))t) = o(N/log N),
 
 because `aβ < 1`.
 
+### Zero-numerator case and primitivity
+
+Suppose a near-full `p`-layer occurs in a primitive support `A`. Let `S` be its index set and let `W_{t,S,ε}` be the corresponding cleared numerator. The same `p`-adic extraction as in Lemma 1 gives
+
+```text
+p divides W_{t,S,ε}.
+```
+
+If `W_{t,S,ε} != 0`, then `p` is bad by definition.
+
+If `W_{t,S,ε} = 0`, then the `p`-layer is itself a nonempty same-`δ` signed-zero subset of `A`. In the Section 7 application we are in the case `|A| > B_N`, while the `p`-layer has size at most `t <= B_N`; hence this layer cannot equal all of `A`. It is therefore a nonempty proper same-`δ` zero-subset, contradicting primitivity.
+
+Therefore, for a good prime in the Section 7 range, a near-full `p`-layer cannot occur.
+
 ### Consequence for the upper bound
 
 For good primes in the range `K_N < t <= B_N`, the `p`-layer of a primitive support cannot be `(1-δ)`-full. Thus at least `δt+O(1)` multiples of `p` are missing.
 
-The relevant layers are disjoint because an integer `n <= N` cannot have two prime factors both exceeding `N/B_N`.
+The relevant layers are disjoint because an integer `n <= N` cannot have two prime factors both exceeding `N/B_N`, and `B_N = O(log N)`.
 
 The first-stage exclusion contributes
 
@@ -616,7 +695,7 @@ For example, taking `δ=0.04` and `β=1.16`,
 δ log β ≈ 0.00594.
 ```
 
-This improves only the `N/log N`-level constant, not the leading term.
+This improves only the `N/log N`-level constant, not the leading term. Again, this entire section remains a separate human refinement pending Lean verification.
 
 ---
 
@@ -643,13 +722,13 @@ The best status split is:
    M(N) <= N - (N/log N)(log log N + γ - 1 + o(1)).
    ```
 
-4. **Not yet Lean-formalized.**
+4. **Optional / not yet Lean-formalized.**
    The second-order refinement
 
    ```text
    M(N) <= N - (N/log N)(log log N + γ - 1 + δ log β + o(1))
    ```
 
-   depends on the additional near-full-layer first-moment argument in Section 7.
+   depends on the additional deterministic union-bound near-full-layer argument in Section 7. It should be treated as a separate lemma pending formal verification.
 
 Again, none of the above is claimed as a solution to Erdős Problem #319.
